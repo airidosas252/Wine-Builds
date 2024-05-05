@@ -110,11 +110,12 @@ add-apt-repository -y ppa:ubuntu-toolchain-r/test
 add-apt-repository -y ppa:cybermax-dexter/mingw-w64-backport
 apt-get update
 apt-get -y build-dep wine-development libsdl2 libvulkan1
-apt-get -y install ccache gcc-13 g++-13 wget git gcc-mingw-w64 g++-mingw-w64
+apt-get -y install make cmake ccache gcc-13 g++-13 wget git gcc-mingw-w64 g++-mingw-w64 flex bison
 apt-get -y install libxpresent-dev libjxr-dev libusb-1.0-0-dev libgcrypt20-dev libpulse-dev libudev-dev libsane-dev libv4l-dev libkrb5-dev libgphoto2-dev liblcms2-dev libcapi20-dev
-apt-get -y install libjpeg62-dev samba-dev
-apt-get -y install libpcsclite-dev libcups2-dev
-apt-get -y install python3-pip libxcb-xkb-dev
+apt-get -y install libjpeg62-dev samba-dev libfreetype-dev libfontconfig1-dev libpulse-dev
+apt-get -y install libpcsclite-dev libcups2-dev libgnutls28-dev libxml2-dev
+apt-get -y install python3-pip libxcb-xkb-dev libdrm-dev libxcomposite-dev libxrandr-dev libxi-dev libxcursor-dev libxrender-dev libx11-dev libxext-dev
+apt-get -y install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libunwind-dev
 apt-get -y purge libvulkan-dev libvulkan1 libsdl2-dev libsdl2-2.0-0 libpcap0.8-dev libpcap0.8 --purge --autoremove
 apt-get -y clean
 apt-get -y autoclean
@@ -162,7 +163,7 @@ cd ../ && rm -r build && mkdir build && cd build
 cd ../ && rm -r build && mkdir build && cd build
 ../libpcap-${libpcap_version}/configure && make -j$(nproc) install
 cd ../libxkbcommon-${libxkbcommon_version}
-meson setup build -Denable-docs=false
+meson setup build -Denable-docs=false -Denable-wayland=false
 meson compile -C build
 meson install -C build
 cd /opt && rm -r /opt/build_libs
