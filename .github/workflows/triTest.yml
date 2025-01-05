@@ -1,0 +1,65 @@
+name: Wine-Git WoW64TriTest CI
+
+on:
+  schedule:
+    - cron: '0 0 */3 * *'  # Runs every 3 days at midnight UTC
+  workflow_dispatch:       # Allows manual triggering of the workflow
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Download Bootstrap Artifact
+        id: download-artifact
+        uses: dawidd6/action-download-artifact@v2
+        continue-on-error: true  # Avoid failing if the artifact is missing
+        with:
+          workflow: bootstrap_wow64.yml
+          workflow_conclusion: success
+          path: /opt
+
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y debootstrap perl git wget xz-utils bubblewrap autoconf
+
+      - name: Extract Bootstrap
+        run: |
+          if [ -f "/opt/Bootstraps WoW64/bootstraps_wow64.tar.xz" ]; then
+            sudo tar -C /opt -xpf "/opt/Bootstraps WoW64/bootstraps_wow64.tar.xz"
+          else
+            echo "Bootstrap artifact not found."
+          fi
+
+      - name: Build Wine
+        run: |
+          chmod +x build_wine.sh
+          export TERMUX_GLIBC="true"
+          export EXPERIMENTAL_WOW64="true"
+          export WINE_VERSION="git"
+          export WINE_BRANCH="staging"
+          ./build_wine.sh
+
+      - name: List Build Directory
+        run: |
+          echo "Listing build directory contents:"
+          ls -l /home/runner/work/WineBuildCustom/WineBuildCustom
+
+      - name: Verify and Checksum
+        run: |
+          if [ ! -f *.tar.xz ]; then
+            echo "Error: No tarball found!"
+            exit 1
+          fi
+          sha256sum *.tar.xz
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: Wine-Git
+          path: ./*.tar.xz
+          
