@@ -100,7 +100,7 @@ apt-get -y dist-upgrade
 apt-get -y install software-properties-common
 
 apt-get update
-apt-get -y build-dep wine-development libsdl2 libvulkan1
+apt-get -y build-dep libsdl2 libvulkan1
 
 apt-get -y install cmake flex bison ccache gcc-14 g++-14 wget git gcc-mingw-w64 g++-mingw-w64
 apt-get -y install libxpresent-dev libjxr-dev libusb-1.0-0-dev libgcrypt20-dev libpulse-dev libudev-dev libsane-dev libv4l-dev libkrb5-dev libgphoto2-dev liblcms2-dev libcapi20-dev
