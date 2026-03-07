@@ -69,6 +69,22 @@ jobs:
         run: |
           sudo tar -C /opt -xpf /opt/bootstraps.tar.xz
 
+      - name: Set up ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ inputs.wine_branch || 'staging' }}-${{ inputs.build_arch || 'x86_64' }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ inputs.wine_branch || 'staging' }}-${{ inputs.build_arch || 'x86_64' }}-
+            ccache-${{ inputs.wine_branch || 'staging' }}-
+
+      - name: Configure ccache
+        run: |
+          mkdir -p ~/.ccache
+          echo "max_size = 2G" > ~/.ccache/ccache.conf
+          echo "compression = true" >> ~/.ccache/ccache.conf
+          echo "compression_level = 6" >> ~/.ccache/ccache.conf
+
       - name: Build Wine
         run: |
           chmod +x build_wine.sh
@@ -84,10 +100,21 @@ jobs:
 
           export WINE_VERSION="${{ inputs.wine_version || 'git' }}"
           export BUILD_ARCH="${{ inputs.build_arch || 'x86_64' }}"
+          export USE_CCACHE="true"
 
           WINE_BRANCH="${{ inputs.wine_branch || 'staging' }}" ./build_wine.sh
 
           sha256sum *.tar.xz
+
+      - name: Show ccache stats
+        if: always()
+        run: |
+          if command -v ccache &>/dev/null; then
+            ccache -s
+          elif [ -f ~/.ccache/ccache.conf ]; then
+            echo "ccache stats from build:"
+            ls -lh ~/.ccache/
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
