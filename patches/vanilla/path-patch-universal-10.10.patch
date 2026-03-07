@@ -1,8 +1,8 @@
 diff --git a/dlls/crypt32/unixlib.c b/dlls/crypt32/unixlib.c
-index 5a25544..3e49ad4 100644
+index 5a25544..373b8df 100644
 --- a/dlls/crypt32/unixlib.c
 +++ b/dlls/crypt32/unixlib.c
-@@ -621,47 +621,27 @@ static const char * const CRYPT_knownLocations[] = {
+@@ -621,47 +621,28 @@ static const char * const CRYPT_knownLocations[] = {
   "/usr/local/share/certs/",
   "/etc/sfw/openssl/certs",
   "/etc/security/cacerts",  /* Android */
@@ -10,7 +10,8 @@ index 5a25544..3e49ad4 100644
 + NULL
  };
  
-+static const char* get_ca_cert_path(void) {
++static const char *get_ca_cert_path(void)
++{
 +    const char *env_path = getenv("WINE_CA_CERT_PATH");
 +    return env_path ? env_path : CRYPT_knownLocations[3];
 +}
@@ -63,10 +64,10 @@ index 5a25544..3e49ad4 100644
  
  static NTSTATUS enum_root_certs( void *args )
 diff --git a/dlls/ntdll/unix/server.c b/dlls/ntdll/unix/server.c
-index f3ffd99..e6926b6 100644
+index 3969c2b..0b93ba4 100644
 --- a/dlls/ntdll/unix/server.c
 +++ b/dlls/ntdll/unix/server.c
-@@ -1240,7 +1240,8 @@ static const char *init_server_dir( dev_t dev, ino_t ino )
+@@ -1284,7 +1284,8 @@ static const char *init_server_dir( dev_t dev, ino_t ino )
  #ifdef __ANDROID__  /* there's no /tmp dir on Android */
      asprintf( &dir, "%s/.wineserver/server-%llx-%llx", config_dir, (unsigned long long)dev, (unsigned long long)ino );
  #else
@@ -77,24 +78,29 @@ index f3ffd99..e6926b6 100644
      return dir;
  }
 diff --git a/programs/winemenubuilder/winemenubuilder.c b/programs/winemenubuilder/winemenubuilder.c
-index 36569fa..bf2b178 100644
+index f3ed125..6bacd36 100644
 --- a/programs/winemenubuilder/winemenubuilder.c
 +++ b/programs/winemenubuilder/winemenubuilder.c
-@@ -1724,7 +1724,8 @@ static BOOL build_native_mime_types(struct list *mime_types)
-     if (_wgetenv( L"XDG_DATA_DIRS" ))
+@@ -1721,10 +1721,12 @@ static BOOL build_native_mime_types(struct list *mime_types)
+     WCHAR *dirs, *dir, *dos_name, *ctx, *p;
+     BOOL ret;
+ 
+-    if (_wgetenv( L"XDG_DATA_DIRS" ))
++    if (_wgetenv( L"WINE_SHARE_DIRS" ))
++        dirs = xwcsdup( _wgetenv( L"WINE_SHARE_DIRS" ));
++    else if (_wgetenv( L"XDG_DATA_DIRS" ))
          dirs = xwcsdup( _wgetenv( L"XDG_DATA_DIRS" ));
      else
 -        dirs = xwcsdup( L"/usr/local/share/:/usr/share/" );
-+        dirs = xwcsdup( _wgetenv(L"WINE_SHARE_DIRS") ? _wgetenv(L"WINE_SHARE_DIRS") :
-+                         L"/data/data/com.termux/files/usr/glibc/local/share:/data/data/com.termux/files/usr/glibc/share" );
++        dirs = xwcsdup( L"/data/data/com.termux/files/usr/glibc/local/share:/data/data/com.termux/files/usr/glibc/share" );
  
      ret = add_mimes(xdg_data_dir, mime_types);
      if (ret)
 diff --git a/server/request.c b/server/request.c
-index dabcea6..be1e1a8 100644
+index 2254315..da42504 100644
 --- a/server/request.c
 +++ b/server/request.c
-@@ -644,7 +644,8 @@ static char *create_server_dir( int force )
+@@ -643,7 +643,8 @@ static char *create_server_dir( int force )
      if (asprintf( &base_dir, "%s/.wineserver", config_dir ) == -1)
          fatal_error( "out of memory\n" );
  #else
