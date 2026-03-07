@@ -1,0 +1,28 @@
+name: Bootstrap CI
+
+on:
+  schedule:
+    - cron: '0 0 1 */2 *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create bootstrap
+        run: |
+          sudo apt update
+          sudo apt install -y debootstrap perl
+          chmod +x create_bootstrap.sh
+          sudo ./create_bootstrap.sh
+          cd /opt
+          sudo tar -I "xz -T0 -9" -cpf bootstraps.tar.xz chroots
+          sha256sum *.tar.xz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Bootstraps
+          path: /opt/bootstraps.tar.xz

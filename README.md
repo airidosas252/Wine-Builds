@@ -1,109 +1,128 @@
 ## Introduction
 
-This is essentially a repurposed Wine build script which was made by a fellow legend Kron4ek. It was modified in such a way where it would be feasible to build Wine for Termux Glibc environment. It requires certain changes like different path locations, modified memory addresses due to how different Termux's root file system is and how it works in general. Without these changes, regular Wine builds would not be usable in any way, shape or form.
+This is a repurposed Wine build script originally made by Kron4ek, modified for building Wine in Termux Glibc and proot/chroot environments. It uses the new WoW64 mode exclusively (`--enable-archs=i386,x86_64` or ARM64EC).
 
-It is based on Kron4ek's build script, which is used by many, and this fork is customized in a few ways:
-
-- It is possible to patch Wine for Termux glibc environment.
-- Two bootstraps for building - one's for regular builds and another for WoW64 specific builds.
-- It is possible to build for proot/chroot (essentially native Linux) as well as Termux glibc environment.
-- A few QoL improvements like adding esync to vanilla Wine, reverting certain commits which affect usability.
-- A complete rewrite is coming soon, which should allow us a more granual control over what patches are needed/required.
+Key features:
+- Builds Wine for **Termux glibc** or **proot/chroot** environments
+- Supports **x86_64 WoW64** and **ARM64EC** build architectures
+- Uses Ubuntu Noble (24.04) bootstrap with bubblewrap sandboxing
+- Available branches: **vanilla**, **staging**, **staging-tkg**
+- Organized patch system with per-branch patch directories
 
 ## Download
 
-Currently builds are only available on Github Actions page, so if you wanna grab them - go over there. Make sure that you are logged in, otherwise builda will be grayed out. 
+Builds are available on the [GitHub Actions](../../actions) page. Make sure you are logged in, otherwise artifacts will be grayed out.
+
 ---
 
-## How to use
+## Quick Start
 
-Extract to any directory and run applications using the path to the Wine binary. For example:
+### 1. Create the bootstrap (one-time setup)
 
-    /home/username/wine-7.0-amd64/bin/wine application.exe
+```bash
+sudo apt install debootstrap perl
+sudo ./create_bootstrap.sh
+```
+
+### 2. Build Wine
+
+```bash
+# Default: staging, x86_64, termux-glibc
+./build_wine.sh
+
+# Vanilla build for proot
+WINE_BRANCH=vanilla TERMUX_GLIBC=false TERMUX_PROOT=true ./build_wine.sh
+
+# ARM64EC build
+BUILD_ARCH=arm64ec WINE_BRANCH=staging ./build_wine.sh
+
+# Specific version
+WINE_VERSION=9.0 WINE_BRANCH=vanilla ./build_wine.sh
+```
+
+---
+
+## Configuration
+
+| Variable | Default | Description |
+|---|---|---|
+| `WINE_VERSION` | `latest` | Wine version (`latest`, `git`, or specific like `9.0`) |
+| `WINE_BRANCH` | `staging` | Build branch: `vanilla`, `staging`, `staging-tkg` |
+| `BUILD_ARCH` | `x86_64` | Architecture: `x86_64` or `arm64ec` |
+| `TERMUX_GLIBC` | `false` | Set to `true` for Termux native glibc environment |
+| `TERMUX_PROOT` | `false` | Set to `true` for proot/chroot environment |
+| `USE_CCACHE` | `false` | Enable ccache for faster recompilation |
+| `DO_NOT_COMPILE` | `false` | Download/patch only, skip compilation |
+
+---
+
+## Build Architectures
+
+### x86_64 WoW64 (default)
+
+- Configure: `--enable-archs=i386,x86_64`
+- Compiler: `gcc-14` + `x86_64-w64-mingw32-gcc`
+- Build flags: `-march=x86-64 -msse3 -mfpmath=sse -O3 -ftree-vectorize`
+
+### ARM64EC
+
+- Configure: `--enable-archs=arm64ec,aarch64,i386 --with-mingw=clang`
+- Uses [bylaws/llvm-mingw](https://github.com/bylaws/llvm-mingw/releases/tag/20250920) toolchain (downloaded automatically)
+- Reference: [FEX-Emu ARM64EC wiki](https://wiki.fex-emu.com/index.php/Development:ARM64EC)
+
+---
+
+## Patches
+
+Patches are organized in the `patches/` directory:
+
+| Directory | Purpose |
+|---|---|
+| `patches/common/` | Applied to all branches (protonoverrides, wine-virtual-memory) |
+| `patches/vanilla/` | Vanilla-specific (esync, termux-wine-fix, pathfix) |
+| `patches/staging/` | Staging-specific (esync, termux-wine-fix-staging, inputbridgefix) |
+| `patches/staging-tkg/` | Staging-TkG-specific |
+| `patches/proot/` | Applied when building for proot (address-space-proot) |
+| `patches/deprecated/` | Old/unused patches kept for reference |
 
 ---
 
 ## Requirements
 
-All regular Wine dependencies are required for these builds to work properly, including their 32-bit versions if you plan to run 32-bit applications.
-
-The easiest way to install (almost) all required libraries is to install Wine from your distribution's package repository. I highly recommend to do this, otherwise you will have to manually figure out what libraries are needed, which may be not an easy task.
-
-More precisely, not all the Wine dependencies are strictly required, some of them are optional and needed only for some Windows applications or only for some functions. Still, it's better to keep them all (or at least most of them) installed.
-
-Also, do note that **glibc (libc6)** **2.27** or newer is required.
-
-If you want to use Wine, but don't want to install any of its dependencies, take a look at my [**Conty project**](https://github.com/Kron4ek/Conty). Conty is a container that includes, among other things, Wine and all of its dependencies (including 32-bit ones), you can use it to run any games and programs.
+- glibc 2.27 or newer
+- All regular Wine dependencies (install Wine from your distro's repos for the easiest setup)
+- Build tools: `git`, `wget`, `autoconf`, `xz`, `bubblewrap`
 
 ---
 
-### What to do if Wine hangs during prefix creation/updating
+## GitHub Actions
 
-There is [a bug in gstreamer](https://bugs.winehq.org/show_bug.cgi?id=51086), which causes Wine to hang during prefix creation/updating, and even if you wait long enough for Wine to finish, your prefix will still be broken.
+Two workflows handle CI:
 
-There are two ways to workaround this issue:
+| Workflow | Purpose | Trigger |
+|---|---|---|
+| `bootstrap.yml` | Creates the Ubuntu Noble bootstrap | Bi-monthly + manual |
+| `build-wine.yml` | Builds Wine with configurable branch/arch/env | Every 3 days + manual |
 
-* You can remove the **gst-editing-services** package from your system. The package may have a different name on some Linux distros (for example, on Debian-based distros the package is called libges-1.0-0).
-* You can disable **winegstreamer** before creating/updating your prefix. For example, you can do that with the `WINEDLLOVERRIDES` environment variable:
-
-        export WINEDLLOVERRIDES="winegstreamer="
-        winecfg
-
-The second way, although works, may break video or audio playblack in some games, so it is better to use the first way if possible.
+The build workflow accepts inputs for `wine_branch`, `wine_version`, `target_env`, and `build_arch`.
 
 ---
 
-## Builds description
+## Available Branches
 
-### Compilation parameters
-
-Build flags (amd64): `-march=x86-64 -msse3 -mfpmath=sse -O2 -ftree-vectorize`
-
-Build flags (x86): `-march=i686 -msse2 -mfpmath=sse -O2 -ftree-vectorize`
-
-Configure options: `--without-ldap --without-oss --disable-winemenubuilder --disable-win16 --disable-tests`
+* **Vanilla** — compiled from official WineHQ sources, with esync patches cherry-picked from Staging.
+* **Staging** — Wine with [the Staging patchset](https://github.com/wine-staging/wine-staging) applied.
+* **Staging-TkG** — Wine with Staging and additional TkG patches. Compiled from [wine-tkg source](https://github.com/Kron4ek/wine-tkg).
 
 ---
 
-### Architectures
-
-* **amd64** - for 64-bit systems, it can run both 32-bit and 64-bit applications.
-* **x86** - for 32-bit systems, it can run only 32-bit applications.
-
----
-
-### Available builds
-
-* **Vanilla** is a Wine build compiled from the official WineHQ sources.
-
-* **Staging** is a Wine build with [the Staging patchset](https://github.com/wine-staging/wine-staging) applied. It contains many useful patches that are not present in vanilla.
-
-* **Staging-TkG** is a Wine build with [the Staging patchset](https://github.com/wine-staging/wine-staging) applied and with many additional useful patches. A complete list of patches is in wine-tkg-config.txt inside the build directory. Compiled from [this source code](https://github.com/Kron4ek/wine-tkg), which is generated using [the wine-tkg build system](https://github.com/Frogging-Family/wine-tkg-git).
-
-* **Proton** is a Wine build modified by Valve and other contributors. It contains many useful patches (primarily for a better gaming experience), some of them are unique and not present in other builds. The differences from the official Steam's Proton are the lack of the Proton's python script and the lack of some builtin dlls (like DXVK and vkd3d-proton), the build environment is also different. However, you can still install DXVK and vkd3d-proton manually to your prefix, like you do with regular Wine builds.
-
-* **Wayland** is a Wine build with the patches from the [wine-wayland project](https://github.com/varmd/wine-wayland). Wine-Wayland works only on Wayland (it doesn't work on Xorg at all) and supports only Vulkan, OpenGL is not supported. Thus you can only run Vulkan games with it (by using DXVK and vkd3d as well). Before using, read all the caveats and notes on [the wine-wayland project page](https://github.com/varmd/wine-wayland).
----
-
-## Compilation / Build environment
-
-I use `create_ubuntu_bootstraps.sh` and `build_wine.sh` to compile my Wine builds, you can use these scripts to compile your own Wine builds. The first script creates two Ubuntu bootstraps (32-bit and 64-bit) and the second script compiles Wine builds inside the created bootstraps by using `bubblewrap`.
-
-These scripts are a pretty convenient way to compile your own Wine builds if you don't trust my binaries or if you want to apply different patches.
-
----
-
-### Links to the sources
+### Links to Sources
 
 * https://dl.winehq.org/wine/source
 * https://github.com/wine-staging/wine-staging
 * https://github.com/Frogging-Family/wine-tkg-git
 * https://github.com/Kron4ek/wine-tkg
-* https://github.com/ValveSoftware/wine
-* https://github.com/varmd/wine-wayland
-* https://github.com/Kron4ek/wine-wayland
-* https://gitlab.collabora.com/alf/wine/-/tree/wayland
 
 ### Credits
 
-Big thanks to: Olegos, JeezDisReez, Hugo, askorbinovaya_kislota and a bunch of others who helped me figure out a way to build Wine for Termux Glibc. Thank you!
+Big thanks to: Kron4ek (original build script), Olegos, JeezDisReez, Hugo, askorbinovaya_kislota, Bylaws (llvm-mingw/ARM64EC), and the FEX-Emu team.

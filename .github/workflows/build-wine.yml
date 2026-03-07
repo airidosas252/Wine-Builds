@@ -1,0 +1,95 @@
+name: Build Wine
+
+on:
+  schedule:
+    # Build staging + termux-glibc every 3 days
+    - cron: '0 0 */3 * *'
+  workflow_dispatch:
+    inputs:
+      wine_branch:
+        description: 'Wine branch to build'
+        type: choice
+        options:
+          - staging
+          - vanilla
+          - staging-tkg
+        default: staging
+      wine_version:
+        description: 'Wine version (latest, git, or specific version)'
+        type: string
+        default: git
+      target_env:
+        description: 'Target environment'
+        type: choice
+        options:
+          - termux-glibc
+          - proot
+        default: termux-glibc
+      build_arch:
+        description: 'Build architecture'
+        type: choice
+        options:
+          - x86_64
+          - arm64ec
+        default: x86_64
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download bootstrap
+        id: download-artifact
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: Bootstraps
+          path: /opt
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Fallback bootstrap download
+        if: steps.download-artifact.outcome == 'failure'
+        uses: dawidd6/action-download-artifact@v8
+        with:
+          workflow: bootstrap.yml
+          workflow_conclusion: success
+          name: Bootstraps
+          path: /opt
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y debootstrap perl git wget xz-utils bubblewrap autoconf
+
+      - name: Extract bootstrap
+        run: |
+          sudo tar -C /opt -xpf /opt/bootstraps.tar.xz
+
+      - name: Build Wine
+        run: |
+          chmod +x build_wine.sh
+
+          # Set target environment
+          if [ "${{ inputs.target_env || 'termux-glibc' }}" = "termux-glibc" ]; then
+            export TERMUX_GLIBC="true"
+            export TERMUX_PROOT="false"
+          else
+            export TERMUX_GLIBC="false"
+            export TERMUX_PROOT="true"
+          fi
+
+          export WINE_VERSION="${{ inputs.wine_version || 'git' }}"
+          export BUILD_ARCH="${{ inputs.build_arch || 'x86_64' }}"
+
+          WINE_BRANCH="${{ inputs.wine_branch || 'staging' }}" ./build_wine.sh
+
+          sha256sum *.tar.xz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Wine-${{ inputs.wine_branch || 'staging' }}-${{ inputs.build_arch || 'x86_64' }}-${{ inputs.target_env || 'termux-glibc' }}
+          path: ./*.tar.xz
