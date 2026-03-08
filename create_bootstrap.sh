@@ -203,6 +203,6 @@ prepare_chroot
 
 rm "${CHROOT_X64}"/opt/prepare_chroot.sh
 
-clear
+clear 2>/dev/null || true
 echo "Done"
 echo "Bootstrap created at: ${CHROOT_X64}"
