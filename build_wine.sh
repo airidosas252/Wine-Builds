@@ -321,7 +321,11 @@ fi
 if [ "${TERMUX_GLIBC}" = "true" ]; then
 	echo "==> Applying Termux Glibc patches for branch: ${WINE_BRANCH}"
 
-	# Apply common patches
+	# Extract major.minor version for version-specific patches (e.g., "10.10" from "10.10" or "11.4")
+	WINE_MAJOR_MINOR="$(echo "${WINE_VERSION}" | grep -oP '^\d+\.\d+')"
+	echo "    Wine version for patch matching: ${WINE_MAJOR_MINOR:-unknown}"
+
+	# Apply common patches (universal — patches/common/*.patch)
 	for patch_file in "${scriptdir}"/patches/common/*.patch; do
 		if [ -f "${patch_file}" ]; then
 			echo "  Applying common patch: $(basename "${patch_file}")"
@@ -332,11 +336,37 @@ if [ "${TERMUX_GLIBC}" = "true" ]; then
 		fi
 	done
 
-	# Apply branch-specific patches
+	# Apply version-specific common patches (patches/common/<version>/*.patch)
+	if [ -n "${WINE_MAJOR_MINOR}" ] && [ -d "${scriptdir}/patches/common/${WINE_MAJOR_MINOR}" ]; then
+		for patch_file in "${scriptdir}"/patches/common/"${WINE_MAJOR_MINOR}"/*.patch; do
+			if [ -f "${patch_file}" ]; then
+				echo "  Applying common ${WINE_MAJOR_MINOR} patch: $(basename "${patch_file}")"
+				patch -d wine -Np1 < "${patch_file}" || {
+					echo "Error: Failed to apply $(basename "${patch_file}")"
+					exit 1
+				}
+			fi
+		done
+	fi
+
+	# Apply branch-specific patches (universal — patches/<branch>/*.patch)
 	if [ -d "${scriptdir}/patches/${WINE_BRANCH}" ]; then
 		for patch_file in "${scriptdir}"/patches/"${WINE_BRANCH}"/*.patch; do
 			if [ -f "${patch_file}" ]; then
 				echo "  Applying ${WINE_BRANCH} patch: $(basename "${patch_file}")"
+				patch -d wine -Np1 < "${patch_file}" || {
+					echo "Error: Failed to apply $(basename "${patch_file}")"
+					exit 1
+				}
+			fi
+		done
+	fi
+
+	# Apply version-specific branch patches (patches/<branch>/<version>/*.patch)
+	if [ -n "${WINE_MAJOR_MINOR}" ] && [ -d "${scriptdir}/patches/${WINE_BRANCH}/${WINE_MAJOR_MINOR}" ]; then
+		for patch_file in "${scriptdir}"/patches/"${WINE_BRANCH}"/"${WINE_MAJOR_MINOR}"/*.patch; do
+			if [ -f "${patch_file}" ]; then
+				echo "  Applying ${WINE_BRANCH} ${WINE_MAJOR_MINOR} patch: $(basename "${patch_file}")"
 				patch -d wine -Np1 < "${patch_file}" || {
 					echo "Error: Failed to apply $(basename "${patch_file}")"
 					exit 1
