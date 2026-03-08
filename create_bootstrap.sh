@@ -177,7 +177,9 @@ cd ../ && rm -r build && mkdir build && cd build
 ../libpcap-${libpcap_version}/configure && make -j\$(nproc) install
 
 # Cleanup
-cd /opt && rm -r /opt/build_libs
+echo "Build complete, cleaning up..."
+cd /opt && rm -rf /opt/build_libs
+echo "Bootstrap preparation finished successfully"
 EOF
 
 	chmod +x "${MAINDIR}"/prepare_chroot.sh
