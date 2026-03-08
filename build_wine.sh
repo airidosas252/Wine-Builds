@@ -113,11 +113,10 @@ else
 		export CROSSCC_X64="ccache ${CROSSCC_X64}"
 		export CROSSCXX_X64="ccache ${CROSSCXX_X64}"
 
-		if [ -z "${XDG_CACHE_HOME:-}" ]; then
-			export XDG_CACHE_HOME="${HOME}/.cache"
-		fi
-		mkdir -p "${XDG_CACHE_HOME}/ccache"
-		mkdir -p "${HOME}/.ccache"
+		# Use BUILD_DIR for ccache so it's accessible inside bwrap
+		# (bwrap uses --tmpfs /home which wipes ~/.ccache)
+		export CCACHE_DIR="${BUILD_DIR}/ccache_cache"
+		mkdir -p "${CCACHE_DIR}"
 	fi
 fi
 
@@ -129,9 +128,8 @@ build_with_bwrap () {
 	bwrap --ro-bind "${BOOTSTRAP_X64}" / --dev /dev --ro-bind /sys /sys \
 		--proc /proc --tmpfs /tmp --tmpfs /home --tmpfs /run --tmpfs /var \
 		--tmpfs /mnt --tmpfs /media --bind "${BUILD_DIR}" "${BUILD_DIR}" \
-		--bind-try "${XDG_CACHE_HOME:-/tmp}"/ccache "${XDG_CACHE_HOME:-/tmp}"/ccache \
-		--bind-try "${HOME}"/.ccache "${HOME}"/.ccache \
 		--setenv PATH "/bin:/sbin:/usr/bin:/usr/sbin" \
+		--setenv CCACHE_DIR "${CCACHE_DIR:-/tmp/ccache}" \
 		"$@"
 }
 
@@ -180,8 +178,19 @@ fi
 ## Prepare build directory
 ########################################################################
 
+# Preserve ccache across BUILD_DIR recreation
+if [ "${USE_CCACHE}" = "true" ] && [ -d "${BUILD_DIR}/ccache_cache" ]; then
+	cp -a "${BUILD_DIR}/ccache_cache" /tmp/ccache_save
+fi
+
 rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
+
+# Restore preserved ccache
+if [ "${USE_CCACHE}" = "true" ] && [ -d /tmp/ccache_save ]; then
+	mv /tmp/ccache_save "${BUILD_DIR}/ccache_cache"
+fi
+
 cd "${BUILD_DIR}" || exit 1
 
 echo

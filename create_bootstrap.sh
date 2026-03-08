@@ -169,7 +169,6 @@ cmake ../SPIRV-Headers-${spirv_headers_version} && make -j\$(nproc) && make inst
 
 
 # Build VkD3D
-cd vkd3d
 cd ../ && rm -r build && mkdir build && cd build
 ../vkd3d/configure && make -j\$(nproc) && make install
 

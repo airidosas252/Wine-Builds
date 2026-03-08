@@ -102,7 +102,22 @@ jobs:
           export BUILD_ARCH="${{ inputs.build_arch || 'x86_64' }}"
           export USE_CCACHE="true"
 
+          # Restore ccache from GitHub Actions cache into BUILD_DIR
+          # (bwrap mounts --tmpfs /home, so ~/.ccache is inaccessible inside sandbox)
+          BUILD_DIR="${HOME}/build_wine"
+          mkdir -p "${BUILD_DIR}/ccache_cache"
+          cp ~/.ccache/ccache.conf "${BUILD_DIR}/ccache_cache/" 2>/dev/null || true
+          if [ -d ~/.ccache ] && [ "$(ls -A ~/.ccache 2>/dev/null)" ]; then
+            cp -a ~/.ccache/* "${BUILD_DIR}/ccache_cache/" 2>/dev/null || true
+          fi
+
           WINE_BRANCH="${{ inputs.wine_branch || 'staging' }}" ./build_wine.sh
+
+          # Save ccache back for GitHub Actions cache persistence
+          mkdir -p ~/.ccache
+          if [ -d "${BUILD_DIR}/ccache_cache" ] && [ "$(ls -A ${BUILD_DIR}/ccache_cache 2>/dev/null)" ]; then
+            cp -a "${BUILD_DIR}/ccache_cache/"* ~/.ccache/ 2>/dev/null || true
+          fi
 
           sha256sum *.tar.xz
 
