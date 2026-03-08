@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 ## A script for creating an Ubuntu bootstrap for Wine WoW64 compilation.
+## Includes aarch64 cross-compiler for ARM64EC native builds.
 ## This bootstrap provides a 64-bit build environment using bubblewrap.
 ##
 ## Requirements: debootstrap, perl, root rights
@@ -102,6 +103,14 @@ apt-get -y install software-properties-common
 apt-get update
 
 apt-get -y install build-essential pkg-config gettext autoconf cmake flex bison ccache gcc-14 g++-14 wget git gcc-mingw-w64 g++-mingw-w64
+
+# aarch64 cross-compiler for ARM64EC native host builds
+dpkg --add-architecture arm64
+apt-get update
+apt-get -y install gcc-14-aarch64-linux-gnu g++-14-aarch64-linux-gnu
+apt-get -y install libfreetype-dev:arm64 libx11-dev:arm64 libxext-dev:arm64 libxrandr-dev:arm64 libxcursor-dev:arm64 libxi-dev:arm64 libxfixes-dev:arm64 libxcomposite-dev:arm64 libxrender-dev:arm64
+apt-get -y install libasound2-dev:arm64 libpulse-dev:arm64 libgnutls28-dev:arm64 libunwind-dev:arm64 libgstreamer1.0-dev:arm64 libgstreamer-plugins-base1.0-dev:arm64
+apt-get -y install libfontconfig-dev:arm64 libdbus-1-dev:arm64
 apt-get -y install libasound2-dev libxpresent-dev libjxr-dev libusb-1.0-0-dev libgcrypt20-dev libpulse-dev libudev-dev libsane-dev libv4l-dev libkrb5-dev libgphoto2-dev liblcms2-dev libcapi20-dev
 apt-get -y install libjpeg62-dev samba-dev libfreetype-dev libunwind-dev ocl-icd-opencl-dev libgnutls28-dev libx11-dev libxcomposite-dev libxcursor-dev libxfixes-dev libxi-dev libxrandr-dev
 apt-get -y install libxrender-dev libxext-dev libpcsclite-dev libcups2-dev libosmesa6-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libldap2-dev

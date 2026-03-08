@@ -88,7 +88,15 @@ if [ "${BUILD_ARCH}" = "arm64ec" ]; then
 	LLVM_MINGW_ARCHIVE="llvm-mingw-${LLVM_MINGW_VERSION}-ucrt-ubuntu-22.04-x86_64"
 	LLVM_MINGW_URL="https://github.com/bylaws/llvm-mingw/releases/download/${LLVM_MINGW_VERSION}/${LLVM_MINGW_ARCHIVE}.tar.xz"
 
-	WINE_ARCH_FLAGS="--enable-archs=arm64ec,aarch64,i386 --with-mingw=clang"
+	# Host compiler = aarch64 cross-compiler (produces native ARM64 binaries)
+	export CC="aarch64-linux-gnu-gcc-14"
+	export CXX="aarch64-linux-gnu-g++-14"
+
+	# Tell pkg-config to find aarch64 libraries
+	export PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig"
+	export PKG_CONFIG_LIBDIR="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
+
+	WINE_ARCH_FLAGS="--enable-archs=arm64ec,aarch64,i386 --with-mingw=clang --host=aarch64-linux-gnu"
 else
 	echo "==> x86_64 WoW64 build mode"
 
