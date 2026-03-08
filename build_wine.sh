@@ -128,7 +128,7 @@ build_with_bwrap () {
 	bwrap --ro-bind "${BOOTSTRAP_X64}" / --dev /dev --ro-bind /sys /sys \
 		--proc /proc --tmpfs /tmp --tmpfs /home --tmpfs /run --tmpfs /var \
 		--tmpfs /mnt --tmpfs /media --bind "${BUILD_DIR}" "${BUILD_DIR}" \
-		--setenv PATH "/bin:/sbin:/usr/bin:/usr/sbin" \
+		--setenv PATH "/bin:/sbin:/usr/bin:/usr/sbin:${PATH}" \
 		--setenv CCACHE_DIR "${CCACHE_DIR:-/tmp/ccache}" \
 		"$@"
 }
