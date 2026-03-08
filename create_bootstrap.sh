@@ -67,12 +67,12 @@ prepare_chroot () {
 	chroot "${CHROOT_PATH}" /usr/bin/env LANG=en_US.UTF-8 TERM=xterm PATH="/bin:/sbin:/usr/bin:/usr/sbin" /opt/prepare_chroot.sh
 
 	echo "Unmount chroot directories"
-	umount -l "${CHROOT_PATH}"
-	umount "${CHROOT_PATH}"/proc
-	umount "${CHROOT_PATH}"/sys
-	umount "${CHROOT_PATH}"/dev/pts
-	umount "${CHROOT_PATH}"/dev/shm
-	umount "${CHROOT_PATH}"/dev
+	umount -l "${CHROOT_PATH}" 2>/dev/null || true
+	umount "${CHROOT_PATH}"/proc 2>/dev/null || true
+	umount "${CHROOT_PATH}"/sys 2>/dev/null || true
+	umount "${CHROOT_PATH}"/dev/pts 2>/dev/null || true
+	umount "${CHROOT_PATH}"/dev/shm 2>/dev/null || true
+	umount "${CHROOT_PATH}"/dev 2>/dev/null || true
 }
 
 create_build_scripts () {
