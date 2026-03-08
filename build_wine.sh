@@ -168,10 +168,12 @@ if [ "${WINE_VERSION}" = "latest" ] || [ -z "${WINE_VERSION}" ]; then
 fi
 
 # Determine stable vs development source URL
-if [ "$(echo "$WINE_VERSION" | cut -c3)" = "0" ]; then
-	WINE_URL_VERSION=$(echo "$WINE_VERSION" | cut -c1).0
+WINE_MAJOR="$(echo "$WINE_VERSION" | cut -d. -f1)"
+WINE_MINOR="$(echo "$WINE_VERSION" | cut -d. -f2)"
+if [ "${WINE_MINOR}" = "0" ]; then
+	WINE_URL_VERSION="${WINE_MAJOR}.0"
 else
-	WINE_URL_VERSION=$(echo "$WINE_VERSION" | cut -c1).x
+	WINE_URL_VERSION="${WINE_MAJOR}.x"
 fi
 
 ########################################################################
