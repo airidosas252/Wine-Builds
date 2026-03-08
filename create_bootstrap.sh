@@ -87,9 +87,9 @@ echo ru_RU.UTF_8 UTF-8 >> /etc/locale.gen
 echo en_US.UTF_8 UTF-8 >> /etc/locale.gen
 locale-gen
 
-echo deb '${CHROOT_MIRROR}' ${CHROOT_DISTRO} main universe > /etc/apt/sources.list
-echo deb '${CHROOT_MIRROR}' ${CHROOT_DISTRO}-updates main universe >> /etc/apt/sources.list
-echo deb '${CHROOT_MIRROR}' ${CHROOT_DISTRO}-security main universe >> /etc/apt/sources.list
+echo deb '[arch=amd64]' '${CHROOT_MIRROR}' ${CHROOT_DISTRO} main universe > /etc/apt/sources.list
+echo deb '[arch=amd64]' '${CHROOT_MIRROR}' ${CHROOT_DISTRO}-updates main universe >> /etc/apt/sources.list
+echo deb '[arch=amd64]' '${CHROOT_MIRROR}' ${CHROOT_DISTRO}-security main universe >> /etc/apt/sources.list
 echo deb-src '${CHROOT_MIRROR}' ${CHROOT_DISTRO} main universe >> /etc/apt/sources.list
 echo deb-src '${CHROOT_MIRROR}' ${CHROOT_DISTRO}-updates main universe >> /etc/apt/sources.list
 echo deb-src '${CHROOT_MIRROR}' ${CHROOT_DISTRO}-security main universe >> /etc/apt/sources.list
@@ -105,6 +105,10 @@ apt-get update
 apt-get -y install build-essential pkg-config gettext autoconf cmake flex bison ccache gcc-14 g++-14 wget git gcc-mingw-w64 g++-mingw-w64
 
 # aarch64 cross-compiler for ARM64EC native host builds
+# arm64 packages live on ports.ubuntu.com, not the main mirror
+echo "deb [arch=arm64] http://ports.ubuntu.com/ ${CHROOT_DISTRO} main universe" >> /etc/apt/sources.list
+echo "deb [arch=arm64] http://ports.ubuntu.com/ ${CHROOT_DISTRO}-updates main universe" >> /etc/apt/sources.list
+echo "deb [arch=arm64] http://ports.ubuntu.com/ ${CHROOT_DISTRO}-security main universe" >> /etc/apt/sources.list
 dpkg --add-architecture arm64
 apt-get update
 apt-get -y install gcc-14-aarch64-linux-gnu g++-14-aarch64-linux-gnu
