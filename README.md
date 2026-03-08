@@ -76,16 +76,30 @@ WINE_VERSION=9.0 WINE_BRANCH=vanilla ./build_wine.sh
 
 ## Patches
 
-Patches are organized in the `patches/` directory:
+Patches are organized in the `patches/` directory. Version-specific patches live in subdirectories (e.g., `vanilla/10.10/`):
 
 | Directory | Purpose |
 |---|---|
-| `patches/common/` | Applied to all branches (protonoverrides, wine-virtual-memory) |
-| `patches/vanilla/` | Vanilla-specific (esync, termux-wine-fix, pathfix) |
-| `patches/staging/` | Staging-specific (esync, termux-wine-fix-staging, inputbridgefix) |
+| `patches/common/` | Applied to all branches |
+| `patches/common/{version}/` | Version-specific common patches (e.g., `wine-virtual-memory`) |
+| `patches/vanilla/` | Vanilla-specific (termux-wine-fix) |
+| `patches/vanilla/{version}/` | Version-specific vanilla patches (e.g., `esync`, `path-patch-universal`) |
+| `patches/staging/` | Staging-specific (esync, termux-wine-fix-staging) |
 | `patches/staging-tkg/` | Staging-TkG-specific |
 | `patches/proot/` | Applied when building for proot (address-space-proot) |
 | `patches/deprecated/` | Old/unused patches kept for reference |
+
+---
+
+## Wine Runtime Environment Variables
+
+The `path-patch-universal` patch adds three environment variables to customize Wine paths at runtime:
+
+| Variable | Default | Description |
+|---|---|---|
+| `WINE_TMP_DIR` | `/data/data/com.termux/files/usr/tmp` | Temp directory for wineserver socket and working files |
+| `WINE_CA_CERT_PATH` | `/data/data/com.termux/files/usr/glibc/etc/ca-certificates/cacert.pem` | Path to CA certificates for SSL/TLS |
+| `WINE_SHARE_DIRS` | `/data/data/com.termux/files/usr/glibc/local/share:/data/data/com.termux/files/usr/glibc/share` | XDG data directories for MIME types |
 
 ---
 
