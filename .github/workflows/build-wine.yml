@@ -67,6 +67,8 @@ jobs:
 
       - name: Extract bootstrap
         run: |
+          # Enable unprivileged user namespaces (required for bwrap on Ubuntu 24.04)
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           sudo tar -C /opt -xpf /opt/bootstraps.tar.xz
 
       - name: Set up ccache
