@@ -518,7 +518,20 @@ for build in ${builds_list}; do
 	fi
 done
 
+# Preserve ccache before cleanup
+if [ "${USE_CCACHE}" = "true" ] && [ -d "${BUILD_DIR}/ccache_cache" ]; then
+	echo "==> Saving ccache ($(du -sh "${BUILD_DIR}/ccache_cache" | cut -f1))..."
+	cp -a "${BUILD_DIR}/ccache_cache" /tmp/ccache_save
+fi
+
 rm -rf "${BUILD_DIR}"
+
+# Restore ccache to ~/.ccache for GitHub Actions cache persistence
+if [ "${USE_CCACHE}" = "true" ] && [ -d /tmp/ccache_save ]; then
+	mkdir -p "${HOME}/.ccache"
+	cp -a /tmp/ccache_save/* "${HOME}/.ccache/" 2>/dev/null || true
+	rm -rf /tmp/ccache_save
+fi
 
 echo
 echo "Done"
