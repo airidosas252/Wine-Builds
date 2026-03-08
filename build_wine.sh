@@ -278,7 +278,17 @@ elif [ "$WINE_BRANCH" = "vanilla" ] || [ "$WINE_BRANCH" = "staging" ]; then
 	if [ "${WINE_BRANCH}" = "staging" ]; then
 		STAGING_ARGS="${STAGING_ARGS:---all -W ntdll-Syscall_Emulation}"
 	elif [ "${WINE_BRANCH}" = "vanilla" ]; then
-		STAGING_ARGS="${STAGING_ARGS:-eventfd_synchronization winecfg_Staging}"
+		# eventfd_synchronization only exists in Wine-Staging <= 10.10
+		# Wine 10.11+ disabled it, Wine 10.16+ removed it entirely
+		_major="$(echo "${WINE_VERSION}" | cut -d. -f1)"
+		_minor="$(echo "${WINE_VERSION}" | cut -d. -f2)"
+		if [ "${_major}" -le 10 ] 2>/dev/null && [ "${_minor}" -le 10 ] 2>/dev/null; then
+			STAGING_ARGS="${STAGING_ARGS:-eventfd_synchronization}"
+			echo "    Wine ${WINE_VERSION}: applying eventfd_synchronization patches"
+		else
+			STAGING_ARGS=""
+			echo "    Wine ${WINE_VERSION}: eventfd not available, skipping Staging patches"
+		fi
 	fi
 
 	########################################################################
