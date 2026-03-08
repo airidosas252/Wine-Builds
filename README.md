@@ -9,6 +9,8 @@ Key features:
 - Available branches: **vanilla**, **staging**, **staging-tkg**
 - Organized patch system with per-branch patch directories
 
+**NOTE** - it does not currently support **Proton** branch or any of it's forks.
+
 ## Download
 
 Builds are available on the [GitHub Actions](../../actions) page. Make sure you are logged in, otherwise artifacts will be grayed out.
