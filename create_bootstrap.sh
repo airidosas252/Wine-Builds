@@ -125,10 +125,8 @@ wget -O vulkan-headers.tar.gz https://github.com/KhronosGroup/Vulkan-Headers/arc
 wget -O spirv-headers.tar.gz https://github.com/KhronosGroup/SPIRV-Headers/archive/refs/tags/${spirv_headers_version}.tar.gz
 wget -O libpcap.tar.gz https://www.tcpdump.org/release/libpcap-${libpcap_version}.tar.gz
 
-# Wine widl binary (needed for vkd3d build)
-if [ -d /usr/lib/x86_64-linux-gnu ]; then
-	wget -O wine.deb https://dl.winehq.org/wine-builds/ubuntu/dists/jammy/main/binary-amd64/wine-stable_9.0.0.0~jammy-1_amd64.deb
-fi
+# widl binary (needed for vkd3d build) — provided by mingw-w64-tools
+apt-get -y install mingw-w64-tools
 
 # VkD3D
 wget -O vkd3d.tar.xz https://dl.winehq.org/vkd3d/source/vkd3d-${vkd3d_version}.tar.xz
@@ -168,9 +166,7 @@ make install
 cd ../ && rm -r build && mkdir build && cd build
 cmake ../SPIRV-Headers-${spirv_headers_version} && make -j\$(nproc) && make install
 
-# Extract widl from Wine .deb
-cd ../ && dpkg -x wine.deb .
-cp opt/wine-stable/bin/widl /usr/bin
+
 
 # Build VkD3D
 cd vkd3d
