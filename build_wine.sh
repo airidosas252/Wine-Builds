@@ -378,25 +378,7 @@ if [ "${TERMUX_GLIBC}" = "true" ]; then
 	fi
 fi
 
-########################################################################
-## Input bridge fix (revert for staging/staging-tkg)
-########################################################################
-
 cd wine || exit 1
-
-if [ "${WINE_BRANCH}" = "vanilla" ]; then
-	echo "==> Fixing Input Bridge (reverting commit)..."
-	git revert --no-commit 2bfe81e41f93ce75139e3a6a2d0b68eb2dcb8fa6 || {
-		echo "Error: Failed to revert input bridge commit."
-		exit 1
-	}
-elif [ "${WINE_BRANCH}" = "staging" ] || [ "${WINE_BRANCH}" = "staging-tkg" ]; then
-	echo "==> Fixing Input Bridge (reverse patch)..."
-	patch -p1 -R < "${scriptdir}"/patches/staging/inputbridgefix.patch || {
-		echo "Error: Failed to revert input bridge patch."
-		exit 1
-	}
-fi
 
 ########################################################################
 ## Run Wine code generators
