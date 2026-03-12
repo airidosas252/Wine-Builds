@@ -110,7 +110,7 @@ apt-get -y install python3-pip libxcb-xkb-dev libfontconfig-dev libgl1-mesa-dev 
 apt-get -y install meson ninja-build libxml2 libxml2-dev libxkbcommon-dev libxkbcommon0 xkb-data libxxf86vm-dev libdbus-1-dev
 
 # Wayland support
-apt-get -y install libwayland-dev wayland-protocols
+apt-get -y install libwayland-dev wayland-protocols libxkbregistry-dev
 
 apt-get -y purge libvulkan-dev libvulkan1 libsdl2-dev libsdl2-2.0-0 libpcap0.8-dev libpcap0.8 --purge || true
 apt-get -y clean
