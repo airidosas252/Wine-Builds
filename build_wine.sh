@@ -6,7 +6,7 @@
 ## Based on Kron4ek's build script, customized for Termux environments.
 ##
 ## Uses an Ubuntu Noble (24.04) bootstrap entered via bubblewrap.
-## Supports x86_64 WoW64 and ARM64EC build architectures.
+## Supports x86_64 WoW64 build architecture.
 ##
 ## Requirements: git, wget, autoconf, xz, bubblewrap
 ##
@@ -37,8 +37,8 @@ export WINE_VERSION="${WINE_VERSION:-latest}"
 # Available branches: vanilla, staging, staging-tkg
 export WINE_BRANCH="${WINE_BRANCH:-staging}"
 
-# Build architecture: x86_64 (default) or arm64ec
-export BUILD_ARCH="${BUILD_ARCH:-x86_64}"
+# Build with Wayland support (requires libwayland-dev in bootstrap)
+export BUILD_WAYLAND="${BUILD_WAYLAND:-false}"
 
 # Target environment: termux-glibc or proot
 # Set TERMUX_GLIBC=true for Termux native glibc environment.
@@ -65,7 +65,14 @@ export DO_NOT_COMPILE="false"
 export USE_CCACHE="${USE_CCACHE:-false}"
 
 # Wine configure options
-export WINE_BUILD_OPTIONS="--disable-winemenubuilder --disable-win16 --disable-tests --without-capi --without-coreaudio --without-cups --without-gphoto --without-osmesa --without-oss --without-pcap --without-pcsclite --without-sane --without-udev --without-unwind --without-usb --without-v4l2 --without-wayland --without-xinerama"
+export WINE_BUILD_OPTIONS="--disable-winemenubuilder --disable-win16 --disable-tests --without-capi --without-coreaudio --without-cups --without-gphoto --without-osmesa --without-oss --without-pcap --without-pcsclite --without-sane --without-udev --without-unwind --without-usb --without-v4l2 --without-xinerama"
+
+# Wayland toggle
+if [ "${BUILD_WAYLAND}" = "true" ]; then
+	export WINE_BUILD_OPTIONS="${WINE_BUILD_OPTIONS} --with-wayland"
+else
+	export WINE_BUILD_OPTIONS="${WINE_BUILD_OPTIONS} --without-wayland"
+fi
 
 # Build directory (temporary, recreated each run)
 export BUILD_DIR="${HOME}/build_wine"
@@ -78,54 +85,36 @@ export scriptdir="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 export BOOTSTRAP_X64=/opt/chroots/noble64_chroot
 
 ########################################################################
-## Architecture-specific compiler setup
+## Compiler setup (x86_64 WoW64)
 ########################################################################
 
-if [ "${BUILD_ARCH}" = "arm64ec" ]; then
-	echo "==> ARM64EC build mode"
+echo "==> x86_64 WoW64 build mode"
 
-	LLVM_MINGW_VERSION="20250920"
-	LLVM_MINGW_ARCHIVE="llvm-mingw-${LLVM_MINGW_VERSION}-ucrt-ubuntu-22.04-x86_64"
-	LLVM_MINGW_URL="https://github.com/bylaws/llvm-mingw/releases/download/${LLVM_MINGW_VERSION}/${LLVM_MINGW_ARCHIVE}.tar.xz"
+export CC="gcc-14"
+export CXX="g++-14"
 
-	# Host compiler = aarch64 cross-compiler (produces native ARM64 binaries)
-	export CC="aarch64-linux-gnu-gcc-14"
-	export CXX="aarch64-linux-gnu-g++-14"
+export CROSSCC_X64="x86_64-w64-mingw32-gcc"
+export CROSSCXX_X64="x86_64-w64-mingw32-g++"
 
-	# Tell pkg-config to find aarch64 libraries
-	export PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig"
-	export PKG_CONFIG_LIBDIR="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
+export CFLAGS_X64="-march=x86-64 -msse3 -mfpmath=sse -O3 -ftree-vectorize -pipe"
+export LDFLAGS="-Wl,-O1,--sort-common,--as-needed"
 
-	WINE_ARCH_FLAGS="--enable-archs=arm64ec,aarch64,i386 --with-mingw=clang --host=aarch64-linux-gnu"
-else
-	echo "==> x86_64 WoW64 build mode"
+export CROSSCFLAGS_X64="${CFLAGS_X64}"
+export CROSSLDFLAGS="${LDFLAGS}"
 
-	export CC="gcc-14"
-	export CXX="g++-14"
+WINE_ARCH_FLAGS="--enable-archs=i386,x86_64"
 
-	export CROSSCC_X64="x86_64-w64-mingw32-gcc"
-	export CROSSCXX_X64="x86_64-w64-mingw32-g++"
+if [ "${USE_CCACHE}" = "true" ]; then
+	export CC="ccache ${CC}"
+	export CXX="ccache ${CXX}"
+	export x86_64_CC="ccache ${CROSSCC_X64}"
+	export CROSSCC_X64="ccache ${CROSSCC_X64}"
+	export CROSSCXX_X64="ccache ${CROSSCXX_X64}"
 
-	export CFLAGS_X64="-march=x86-64 -msse3 -mfpmath=sse -O3 -ftree-vectorize -pipe"
-	export LDFLAGS="-Wl,-O1,--sort-common,--as-needed"
-
-	export CROSSCFLAGS_X64="${CFLAGS_X64}"
-	export CROSSLDFLAGS="${LDFLAGS}"
-
-	WINE_ARCH_FLAGS="--enable-archs=i386,x86_64"
-
-	if [ "${USE_CCACHE}" = "true" ]; then
-		export CC="ccache ${CC}"
-		export CXX="ccache ${CXX}"
-		export x86_64_CC="ccache ${CROSSCC_X64}"
-		export CROSSCC_X64="ccache ${CROSSCC_X64}"
-		export CROSSCXX_X64="ccache ${CROSSCXX_X64}"
-
-		# Use BUILD_DIR for ccache so it's accessible inside bwrap
-		# (bwrap uses --tmpfs /home which wipes ~/.ccache)
-		export CCACHE_DIR="${BUILD_DIR}/ccache_cache"
-		mkdir -p "${CCACHE_DIR}"
-	fi
+	# Use BUILD_DIR for ccache so it's accessible inside bwrap
+	# (bwrap uses --tmpfs /home which wipes ~/.ccache)
+	export CCACHE_DIR="${BUILD_DIR}/ccache_cache"
+	mkdir -p "${CCACHE_DIR}"
 fi
 
 ########################################################################
@@ -439,54 +428,31 @@ if [ ! -d wine ]; then
 	exit 1
 fi
 
-########################################################################
-## ARM64EC toolchain setup
-########################################################################
 
-if [ "${BUILD_ARCH}" = "arm64ec" ]; then
-	echo "==> Downloading bylaws/llvm-mingw toolchain..."
-	cd "${BUILD_DIR}"
-	wget -q --show-progress -O llvm-mingw.tar.xz "${LLVM_MINGW_URL}"
-	tar xf llvm-mingw.tar.xz
-	# MUST be first in PATH — overrides host 'ar' binary
-	export PATH="${BUILD_DIR}/${LLVM_MINGW_ARCHIVE}/bin:${PATH}"
-	echo "==> llvm-mingw toolchain ready"
-fi
 
 ########################################################################
 ## Compile Wine
 ########################################################################
 
 echo
-echo "==> Starting Wine compilation (${BUILD_ARCH})"
+echo "==> Starting Wine compilation (x86_64 WoW64)"
 echo
 
-if [ "${BUILD_ARCH}" = "arm64ec" ]; then
-	mkdir "${BUILD_DIR}"/build64
-	cd "${BUILD_DIR}"/build64 || exit 1
-	build_with_bwrap "${BUILD_DIR}"/wine/configure \
-		${WINE_ARCH_FLAGS} \
-		${WINE_BUILD_OPTIONS} \
-		--prefix "${BUILD_DIR}"/wine-"${BUILD_NAME}"-arm64ec
-	build_with_bwrap make -j$(nproc)
-	build_with_bwrap make install
-else
-	export CROSSCC="${CROSSCC_X64}"
-	export CROSSCXX="${CROSSCXX_X64}"
-	export CFLAGS="${CFLAGS_X64}"
-	export CXXFLAGS="${CFLAGS_X64}"
-	export CROSSCFLAGS="${CROSSCFLAGS_X64}"
-	export CROSSCXXFLAGS="${CROSSCFLAGS_X64}"
+export CROSSCC="${CROSSCC_X64}"
+export CROSSCXX="${CROSSCXX_X64}"
+export CFLAGS="${CFLAGS_X64}"
+export CXXFLAGS="${CFLAGS_X64}"
+export CROSSCFLAGS="${CROSSCFLAGS_X64}"
+export CROSSCXXFLAGS="${CROSSCFLAGS_X64}"
 
-	mkdir "${BUILD_DIR}"/build64
-	cd "${BUILD_DIR}"/build64 || exit 1
-	build_with_bwrap "${BUILD_DIR}"/wine/configure \
-		${WINE_ARCH_FLAGS} \
-		${WINE_BUILD_OPTIONS} \
-		--prefix "${BUILD_DIR}"/wine-"${BUILD_NAME}"-amd64
-	build_with_bwrap make -j$(nproc)
-	build_with_bwrap make install
-fi
+mkdir "${BUILD_DIR}"/build64
+cd "${BUILD_DIR}"/build64 || exit 1
+build_with_bwrap "${BUILD_DIR}"/wine/configure \
+	${WINE_ARCH_FLAGS} \
+	${WINE_BUILD_OPTIONS} \
+	--prefix "${BUILD_DIR}"/wine-"${BUILD_NAME}"-amd64
+build_with_bwrap make -j$(nproc)
+build_with_bwrap make install
 
 ########################################################################
 ## Package the build
@@ -507,11 +473,7 @@ fi
 
 export XZ_OPT="-9"
 
-if [ "${BUILD_ARCH}" = "arm64ec" ]; then
-	builds_list="wine-${BUILD_NAME}-arm64ec"
-else
-	builds_list="wine-${BUILD_NAME}-amd64"
-fi
+builds_list="wine-${BUILD_NAME}-amd64"
 
 for build in ${builds_list}; do
 	if [ -d "${build}" ]; then

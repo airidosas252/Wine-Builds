@@ -1,10 +1,11 @@
 ## Introduction
 
-This is a repurposed Wine build script originally made by Kron4ek, modified for building Wine in Termux Glibc and proot/chroot environments. It uses the new WoW64 mode exclusively (`--enable-archs=i386,x86_64` or ARM64EC).
+This is a repurposed Wine build script originally made by Kron4ek, modified for building Wine in Termux Glibc and proot/chroot environments. It uses the new WoW64 mode exclusively (`--enable-archs=i386,x86_64`).
 
 Key features:
 - Builds Wine for **Termux glibc** or **proot/chroot** environments
-- Supports **x86_64 WoW64** and **ARM64EC** build architectures
+- Supports **x86_64 WoW64** build architecture
+- Optional **Wayland** support via `BUILD_WAYLAND` toggle
 - Uses Ubuntu Noble (24.04) bootstrap with bubblewrap sandboxing
 - Available branches: **vanilla**, **staging**, **staging-tkg**
 - Organized patch system with per-branch patch directories
@@ -35,8 +36,8 @@ sudo ./create_bootstrap.sh
 # Vanilla build for proot
 WINE_BRANCH=vanilla TERMUX_GLIBC=false TERMUX_PROOT=true ./build_wine.sh
 
-# ARM64EC build
-BUILD_ARCH=arm64ec WINE_BRANCH=staging ./build_wine.sh
+# Build with Wayland support
+BUILD_WAYLAND=true ./build_wine.sh
 
 # Specific version
 WINE_VERSION=9.0 WINE_BRANCH=vanilla ./build_wine.sh
@@ -50,7 +51,7 @@ WINE_VERSION=9.0 WINE_BRANCH=vanilla ./build_wine.sh
 |---|---|---|
 | `WINE_VERSION` | `latest` | Wine version (`latest`, `git`, or specific like `9.0`) |
 | `WINE_BRANCH` | `staging` | Build branch: `vanilla`, `staging`, `staging-tkg` |
-| `BUILD_ARCH` | `x86_64` | Architecture: `x86_64` or `arm64ec` |
+| `BUILD_WAYLAND` | `false` | Set to `true` to build with Wayland support |
 | `TERMUX_GLIBC` | `false` | Set to `true` for Termux native glibc environment |
 | `TERMUX_PROOT` | `false` | Set to `true` for proot/chroot environment |
 | `USE_CCACHE` | `false` | Enable ccache for faster recompilation |
@@ -58,19 +59,13 @@ WINE_VERSION=9.0 WINE_BRANCH=vanilla ./build_wine.sh
 
 ---
 
-## Build Architectures
+## Build Architecture
 
-### x86_64 WoW64 (default)
+### x86_64 WoW64
 
 - Configure: `--enable-archs=i386,x86_64`
 - Compiler: `gcc-14` + `x86_64-w64-mingw32-gcc`
 - Build flags: `-march=x86-64 -msse3 -mfpmath=sse -O3 -ftree-vectorize`
-
-### ARM64EC
-
-- Configure: `--enable-archs=arm64ec,aarch64,i386 --with-mingw=clang`
-- Uses [bylaws/llvm-mingw](https://github.com/bylaws/llvm-mingw/releases/tag/20250920) toolchain (downloaded automatically)
-- Reference: [FEX-Emu ARM64EC wiki](https://wiki.fex-emu.com/index.php/Development:ARM64EC)
 
 ---
 
@@ -120,7 +115,7 @@ Two workflows handle CI:
 | `bootstrap.yml` | Creates the Ubuntu Noble bootstrap | Bi-monthly + manual |
 | `build-wine.yml` | Builds Wine with configurable branch/arch/env | Every 3 days + manual |
 
-The build workflow accepts inputs for `wine_branch`, `wine_version`, `target_env`, and `build_arch`.
+The build workflow accepts inputs for `wine_branch`, `wine_version`, `target_env`, and `build_wayland`.
 
 ---
 
@@ -141,4 +136,4 @@ The build workflow accepts inputs for `wine_branch`, `wine_version`, `target_env
 
 ### Credits
 
-Big thanks to: Kron4ek (original build script), Olegos, JeezDisReez, Hugo, askorbinovaya_kislota, Bylaws (llvm-mingw/ARM64EC), and the FEX-Emu team.
+Big thanks to: Kron4ek (original build script), Olegos, JeezDisReez, Hugo, askorbinovaya_kislota, and the FEX-Emu team.
