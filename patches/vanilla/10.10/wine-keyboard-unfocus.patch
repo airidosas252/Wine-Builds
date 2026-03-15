@@ -1,0 +1,44 @@
+diff --git a/dlls/winewayland.drv/wayland_keyboard.c b/dlls/winewayland.drv/wayland_keyboard.c
+index 39b4223..0366038 100644
+--- a/dlls/winewayland.drv/wayland_keyboard.c
++++ b/dlls/winewayland.drv/wayland_keyboard.c
+@@ -800,7 +800,11 @@ static void keyboard_handle_leave(void *data, struct wl_keyboard *wl_keyboard,
+      * and for any key repetition to stop. */
+     release_all_keys(hwnd);
+ 
+-    /* FIXME: update foreground window as well */
++    /* If this window is still the foreground window, unset it by
++     * transferring foreground to the desktop window. We post instead of
++     * calling directly to avoid re-entrancy issues and to let any
++     * pending keyboard_enter for another surface take priority. */
++    NtUserPostMessage(hwnd, WM_WAYLAND_UNSET_FOREGROUND, 0, 0);
+ }
+ 
+ static void send_right_control(HWND hwnd, uint32_t state)
+diff --git a/dlls/winewayland.drv/waylanddrv.h b/dlls/winewayland.drv/waylanddrv.h
+index 001cb29..509af42 100644
+--- a/dlls/winewayland.drv/waylanddrv.h
++++ b/dlls/winewayland.drv/waylanddrv.h
+@@ -66,6 +66,7 @@ enum wayland_window_message
+     WM_WAYLAND_INIT_DISPLAY_DEVICES = WM_WINE_FIRST_DRIVER_MSG,
+     WM_WAYLAND_CONFIGURE,
+     WM_WAYLAND_SET_FOREGROUND,
++    WM_WAYLAND_UNSET_FOREGROUND,
+ };
+ 
+ enum wayland_surface_config_state
+diff --git a/dlls/winewayland.drv/window.c b/dlls/winewayland.drv/window.c
+index ce5b6bb..c5cbe59 100644
+--- a/dlls/winewayland.drv/window.c
++++ b/dlls/winewayland.drv/window.c
+@@ -654,6 +654,10 @@ LRESULT WAYLAND_WindowMessage(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
+     case WM_WAYLAND_SET_FOREGROUND:
+         NtUserSetForegroundWindow(hwnd);
+         return 0;
++    case WM_WAYLAND_UNSET_FOREGROUND:
++        if (NtUserGetForegroundWindow() == hwnd)
++            NtUserSetForegroundWindow(NtUserGetDesktopWindow());
++        return 0;
+     default:
+         FIXME("got window msg %x hwnd %p wp %lx lp %lx\n", msg, hwnd, (long)wp, lp);
+         return 0;
