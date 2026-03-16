@@ -1,0 +1,307 @@
+diff --git a/dlls/winevulkan/loader_thunks.c b/dlls/winevulkan/loader_thunks.c
+index 9f0d6d1..eb63e66 100644
+--- a/dlls/winevulkan/loader_thunks.c
++++ b/dlls/winevulkan/loader_thunks.c
+@@ -4877,6 +4877,18 @@ VkResult WINAPI vkGetEventStatus(VkDevice device, VkEvent event)
+     return params.result;
+ }
+ 
++VkResult WINAPI vkGetFenceFdKHR(VkDevice device, const VkFenceGetFdInfoKHR *pGetFdInfo, int *pFd)
++{
++    struct vkGetFenceFdKHR_params params;
++    NTSTATUS status;
++    params.device = device;
++    params.pGetFdInfo = pGetFdInfo;
++    params.pFd = pFd;
++    status = UNIX_CALL(vkGetFenceFdKHR, &params);
++    assert(!status && "vkGetFenceFdKHR");
++    return params.result;
++}
++
+ VkResult WINAPI vkGetFenceStatus(VkDevice device, VkFence fence)
+ {
+     struct vkGetFenceStatus_params params;
+@@ -6170,6 +6182,17 @@ VkResult WINAPI vkGetVideoSessionMemoryRequirementsKHR(VkDevice device, VkVideoS
+     return params.result;
+ }
+ 
++VkResult WINAPI vkImportFenceFdKHR(VkDevice device, const VkImportFenceFdInfoKHR *pImportFenceFdInfo)
++{
++    struct vkImportFenceFdKHR_params params;
++    NTSTATUS status;
++    params.device = device;
++    params.pImportFenceFdInfo = pImportFenceFdInfo;
++    status = UNIX_CALL(vkImportFenceFdKHR, &params);
++    assert(!status && "vkImportFenceFdKHR");
++    return params.result;
++}
++
+ VkResult WINAPI vkInitializePerformanceApiINTEL(VkDevice device, const VkInitializePerformanceApiInfoINTEL *pInitializeInfo)
+ {
+     struct vkInitializePerformanceApiINTEL_params params;
+@@ -7368,6 +7391,7 @@ static const struct vulkan_func vk_device_dispatch_table[] =
+     {"vkGetDynamicRenderingTilePropertiesQCOM", vkGetDynamicRenderingTilePropertiesQCOM},
+     {"vkGetEncodedVideoSessionParametersKHR", vkGetEncodedVideoSessionParametersKHR},
+     {"vkGetEventStatus", vkGetEventStatus},
++    {"vkGetFenceFdKHR", vkGetFenceFdKHR},
+     {"vkGetFenceStatus", vkGetFenceStatus},
+     {"vkGetFramebufferTilePropertiesQCOM", vkGetFramebufferTilePropertiesQCOM},
+     {"vkGetGeneratedCommandsMemoryRequirementsEXT", vkGetGeneratedCommandsMemoryRequirementsEXT},
+@@ -7426,6 +7450,7 @@ static const struct vulkan_func vk_device_dispatch_table[] =
+     {"vkGetTensorViewOpaqueCaptureDescriptorDataARM", vkGetTensorViewOpaqueCaptureDescriptorDataARM},
+     {"vkGetValidationCacheDataEXT", vkGetValidationCacheDataEXT},
+     {"vkGetVideoSessionMemoryRequirementsKHR", vkGetVideoSessionMemoryRequirementsKHR},
++    {"vkImportFenceFdKHR", vkImportFenceFdKHR},
+     {"vkInitializePerformanceApiINTEL", vkInitializePerformanceApiINTEL},
+     {"vkInvalidateMappedMemoryRanges", vkInvalidateMappedMemoryRanges},
+     {"vkLatencySleepNV", vkLatencySleepNV},
+diff --git a/dlls/winevulkan/loader_thunks.h b/dlls/winevulkan/loader_thunks.h
+index 91c222d..380c4d5 100644
+--- a/dlls/winevulkan/loader_thunks.h
++++ b/dlls/winevulkan/loader_thunks.h
+@@ -496,6 +496,7 @@ enum unix_call
+     unix_vkGetDynamicRenderingTilePropertiesQCOM,
+     unix_vkGetEncodedVideoSessionParametersKHR,
+     unix_vkGetEventStatus,
++    unix_vkGetFenceFdKHR,
+     unix_vkGetFenceStatus,
+     unix_vkGetFramebufferTilePropertiesQCOM,
+     unix_vkGetGeneratedCommandsMemoryRequirementsEXT,
+@@ -606,6 +607,7 @@ enum unix_call
+     unix_vkGetTensorViewOpaqueCaptureDescriptorDataARM,
+     unix_vkGetValidationCacheDataEXT,
+     unix_vkGetVideoSessionMemoryRequirementsKHR,
++    unix_vkImportFenceFdKHR,
+     unix_vkInitializePerformanceApiINTEL,
+     unix_vkInvalidateMappedMemoryRanges,
+     unix_vkLatencySleepNV,
+@@ -4292,6 +4294,14 @@ struct vkGetEventStatus_params
+     VkResult result;
+ };
+ 
++struct vkGetFenceFdKHR_params
++{
++    VkDevice device;
++    const VkFenceGetFdInfoKHR *pGetFdInfo;
++    int *pFd;
++    VkResult result;
++};
++
+ struct vkGetFenceStatus_params
+ {
+     VkDevice device;
+@@ -5165,6 +5175,13 @@ struct vkGetVideoSessionMemoryRequirementsKHR_params
+     VkResult result;
+ };
+ 
++struct vkImportFenceFdKHR_params
++{
++    VkDevice device;
++    const VkImportFenceFdInfoKHR *pImportFenceFdInfo;
++    VkResult result;
++};
++
+ struct vkInitializePerformanceApiINTEL_params
+ {
+     VkDevice device;
+diff --git a/dlls/winevulkan/make_vulkan b/dlls/winevulkan/make_vulkan
+index d7c1cb3..64618ee 100755
+--- a/dlls/winevulkan/make_vulkan
++++ b/dlls/winevulkan/make_vulkan
+@@ -111,7 +111,6 @@ UNSUPPORTED_EXTENSIONS = [
+     "VK_EXT_metal_objects",
+     "VK_EXT_physical_device_drm",
+     "VK_GOOGLE_surfaceless_query",
+-    "VK_KHR_external_fence_fd",
+     "VK_KHR_external_memory_fd",
+     "VK_KHR_external_semaphore_fd",
+     "VK_SEC_amigo_profiling", # Angle specific.
+diff --git a/dlls/winevulkan/vulkan_thunks.c b/dlls/winevulkan/vulkan_thunks.c
+index c84703a..96e768f 100644
+--- a/dlls/winevulkan/vulkan_thunks.c
++++ b/dlls/winevulkan/vulkan_thunks.c
+@@ -6888,6 +6888,14 @@ typedef struct VkVideoEncodeSessionParametersFeedbackInfoKHR32
+     VkBool32 hasOverrides;
+ } VkVideoEncodeSessionParametersFeedbackInfoKHR32;
+ 
++typedef struct VkFenceGetFdInfoKHR32
++{
++    VkStructureType sType;
++    PTR32 pNext;
++    VkFence DECLSPEC_ALIGN(8) fence;
++    VkExternalFenceHandleTypeFlagBits handleType;
++} VkFenceGetFdInfoKHR32;
++
+ typedef struct VkGeneratedCommandsMemoryRequirementsInfoEXT32
+ {
+     VkStructureType sType;
+@@ -9232,6 +9240,16 @@ typedef struct VkVideoSessionMemoryRequirementsKHR32
+     VkMemoryRequirements32 DECLSPEC_ALIGN(8) memoryRequirements;
+ } VkVideoSessionMemoryRequirementsKHR32;
+ 
++typedef struct VkImportFenceFdInfoKHR32
++{
++    VkStructureType sType;
++    PTR32 pNext;
++    VkFence DECLSPEC_ALIGN(8) fence;
++    VkFenceImportFlags flags;
++    VkExternalFenceHandleTypeFlagBits handleType;
++    int fd;
++} VkImportFenceFdInfoKHR32;
++
+ typedef struct VkInitializePerformanceApiInfoINTEL32
+ {
+     VkStructureType sType;
+@@ -28267,6 +28285,18 @@ static inline void convert_VkVideoEncodeSessionParametersFeedbackInfoKHR_host_to
+     }
+ }
+ 
++static inline void convert_VkFenceGetFdInfoKHR_win32_to_host(const VkFenceGetFdInfoKHR32 *in, VkFenceGetFdInfoKHR *out)
++{
++    if (!in) return;
++
++    out->sType = in->sType;
++    out->pNext = NULL;
++    out->fence = in->fence;
++    out->handleType = in->handleType;
++    if (in->pNext)
++        FIXME("Unexpected pNext\n");
++}
++
+ static inline VkTilePropertiesQCOM *convert_VkTilePropertiesQCOM_array_win32_to_host(struct conversion_context *ctx, const VkTilePropertiesQCOM32 *in, uint32_t count)
+ {
+     VkTilePropertiesQCOM *out;
+@@ -38631,6 +38661,20 @@ static inline void convert_VkVideoSessionMemoryRequirementsKHR_array_host_to_win
+     }
+ }
+ 
++static inline void convert_VkImportFenceFdInfoKHR_win32_to_host(const VkImportFenceFdInfoKHR32 *in, VkImportFenceFdInfoKHR *out)
++{
++    if (!in) return;
++
++    out->sType = in->sType;
++    out->pNext = NULL;
++    out->fence = in->fence;
++    out->flags = in->flags;
++    out->handleType = in->handleType;
++    out->fd = in->fd;
++    if (in->pNext)
++        FIXME("Unexpected pNext\n");
++}
++
+ static inline void convert_VkInitializePerformanceApiInfoINTEL_win32_to_host(const VkInitializePerformanceApiInfoINTEL32 *in, VkInitializePerformanceApiInfoINTEL *out)
+ {
+     if (!in) return;
+@@ -53214,6 +53258,36 @@ static NTSTATUS thunk32_vkGetEventStatus(void *args)
+     return STATUS_SUCCESS;
+ }
+ 
++#ifdef _WIN64
++static NTSTATUS thunk64_vkGetFenceFdKHR(void *args)
++{
++    struct vkGetFenceFdKHR_params *params = args;
++
++    TRACE("%p, %p, %p\n", params->device, params->pGetFdInfo, params->pFd);
++
++    params->result = vulkan_device_from_handle(params->device)->p_vkGetFenceFdKHR(vulkan_device_from_handle(params->device)->host.device, params->pGetFdInfo, params->pFd);
++    return STATUS_SUCCESS;
++}
++#endif /* _WIN64 */
++
++static NTSTATUS thunk32_vkGetFenceFdKHR(void *args)
++{
++    struct
++    {
++        PTR32 device;
++        PTR32 pGetFdInfo;
++        PTR32 pFd;
++        VkResult result;
++    } *params = args;
++    VkFenceGetFdInfoKHR pGetFdInfo_host;
++
++    TRACE("%#x, %#x, %#x\n", params->device, params->pGetFdInfo, params->pFd);
++
++    convert_VkFenceGetFdInfoKHR_win32_to_host((const VkFenceGetFdInfoKHR32 *)UlongToPtr(params->pGetFdInfo), &pGetFdInfo_host);
++    params->result = vulkan_device_from_handle((VkDevice)UlongToPtr(params->device))->p_vkGetFenceFdKHR(vulkan_device_from_handle((VkDevice)UlongToPtr(params->device))->host.device, &pGetFdInfo_host, (int *)UlongToPtr(params->pFd));
++    return STATUS_SUCCESS;
++}
++
+ #ifdef _WIN64
+ static NTSTATUS thunk64_vkGetFenceStatus(void *args)
+ {
+@@ -56843,6 +56917,35 @@ static NTSTATUS thunk32_vkGetVideoSessionMemoryRequirementsKHR(void *args)
+     return STATUS_SUCCESS;
+ }
+ 
++#ifdef _WIN64
++static NTSTATUS thunk64_vkImportFenceFdKHR(void *args)
++{
++    struct vkImportFenceFdKHR_params *params = args;
++
++    TRACE("%p, %p\n", params->device, params->pImportFenceFdInfo);
++
++    params->result = vulkan_device_from_handle(params->device)->p_vkImportFenceFdKHR(vulkan_device_from_handle(params->device)->host.device, params->pImportFenceFdInfo);
++    return STATUS_SUCCESS;
++}
++#endif /* _WIN64 */
++
++static NTSTATUS thunk32_vkImportFenceFdKHR(void *args)
++{
++    struct
++    {
++        PTR32 device;
++        PTR32 pImportFenceFdInfo;
++        VkResult result;
++    } *params = args;
++    VkImportFenceFdInfoKHR pImportFenceFdInfo_host;
++
++    TRACE("%#x, %#x\n", params->device, params->pImportFenceFdInfo);
++
++    convert_VkImportFenceFdInfoKHR_win32_to_host((const VkImportFenceFdInfoKHR32 *)UlongToPtr(params->pImportFenceFdInfo), &pImportFenceFdInfo_host);
++    params->result = vulkan_device_from_handle((VkDevice)UlongToPtr(params->device))->p_vkImportFenceFdKHR(vulkan_device_from_handle((VkDevice)UlongToPtr(params->device))->host.device, &pImportFenceFdInfo_host);
++    return STATUS_SUCCESS;
++}
++
+ #ifdef _WIN64
+ static NTSTATUS thunk64_vkInitializePerformanceApiINTEL(void *args)
+ {
+@@ -58958,6 +59061,7 @@ static const char * const vk_device_extensions[] =
+     "VK_KHR_dynamic_rendering",
+     "VK_KHR_dynamic_rendering_local_read",
+     "VK_KHR_external_fence",
++    "VK_KHR_external_fence_fd",
+     "VK_KHR_external_memory",
+     "VK_KHR_external_semaphore",
+     "VK_KHR_format_feature_flags2",
+@@ -59685,6 +59789,7 @@ const unixlib_entry_t __wine_unix_call_funcs[] =
+     thunk64_vkGetDynamicRenderingTilePropertiesQCOM,
+     thunk64_vkGetEncodedVideoSessionParametersKHR,
+     thunk64_vkGetEventStatus,
++    thunk64_vkGetFenceFdKHR,
+     thunk64_vkGetFenceStatus,
+     thunk64_vkGetFramebufferTilePropertiesQCOM,
+     thunk64_vkGetGeneratedCommandsMemoryRequirementsEXT,
+@@ -59795,6 +59900,7 @@ const unixlib_entry_t __wine_unix_call_funcs[] =
+     thunk64_vkGetTensorViewOpaqueCaptureDescriptorDataARM,
+     thunk64_vkGetValidationCacheDataEXT,
+     thunk64_vkGetVideoSessionMemoryRequirementsKHR,
++    thunk64_vkImportFenceFdKHR,
+     thunk64_vkInitializePerformanceApiINTEL,
+     thunk64_vkInvalidateMappedMemoryRanges,
+     thunk64_vkLatencySleepNV,
+@@ -60345,6 +60451,7 @@ const unixlib_entry_t __wine_unix_call_funcs[] =
+     thunk32_vkGetDynamicRenderingTilePropertiesQCOM,
+     thunk32_vkGetEncodedVideoSessionParametersKHR,
+     thunk32_vkGetEventStatus,
++    thunk32_vkGetFenceFdKHR,
+     thunk32_vkGetFenceStatus,
+     thunk32_vkGetFramebufferTilePropertiesQCOM,
+     thunk32_vkGetGeneratedCommandsMemoryRequirementsEXT,
+@@ -60455,6 +60562,7 @@ const unixlib_entry_t __wine_unix_call_funcs[] =
+     thunk32_vkGetTensorViewOpaqueCaptureDescriptorDataARM,
+     thunk32_vkGetValidationCacheDataEXT,
+     thunk32_vkGetVideoSessionMemoryRequirementsKHR,
++    thunk32_vkImportFenceFdKHR,
+     thunk32_vkInitializePerformanceApiINTEL,
+     thunk32_vkInvalidateMappedMemoryRanges,
+     thunk32_vkLatencySleepNV,
