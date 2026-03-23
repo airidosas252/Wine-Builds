@@ -1,8 +1,8 @@
 diff --git a/dlls/winewayland.drv/window.c b/dlls/winewayland.drv/window.c
-index ce5b6bb..e09cf74 100644
+index ce5b6bb..9193090 100644
 --- a/dlls/winewayland.drv/window.c
 +++ b/dlls/winewayland.drv/window.c
-@@ -63,9 +63,14 @@ static struct wayland_win_data *wayland_win_data_create(HWND hwnd, const struct
+@@ -63,9 +63,20 @@ static struct wayland_win_data *wayland_win_data_create(HWND hwnd, const struct
      struct rb_entry *rb_entry;
      HWND parent;
  
@@ -11,10 +11,16 @@ index ce5b6bb..e09cf74 100644
 -    if (parent != NtUserGetDesktopWindow() && !NtUserGetAncestor(parent, GA_PARENT))
 +    /* Don't create win data for HWND_MESSAGE windows.
 +     * Allow the desktop window for virtual desktop support, so that
-+     * it gets a Wayland surface and can receive pointer events. */
++     * it gets a Wayland surface and can receive pointer events.
++     * But only in the process that owns the desktop window -- other
++     * processes sharing the same HWND via wineserver would create
++     * duplicate fullscreen Wayland surfaces (black screen). */
 +    if (!(parent = NtUserGetAncestor(hwnd, GA_PARENT)))
 +    {
++        DWORD desktop_pid = 0;
 +        if (hwnd != NtUserGetDesktopWindow()) return NULL;
++        NtUserGetWindowThread(hwnd, &desktop_pid);
++        if (GetCurrentProcessId() != desktop_pid) return NULL;
 +    }
 +    else if (parent != NtUserGetDesktopWindow() && !NtUserGetAncestor(parent, GA_PARENT))
          return NULL;
