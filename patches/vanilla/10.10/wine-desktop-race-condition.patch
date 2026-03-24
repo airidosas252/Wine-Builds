@@ -1,5 +1,5 @@
 diff --git a/dlls/win32u/winstation.c b/dlls/win32u/winstation.c
-index eaa5f40..f704b0e 100644
+index eaa5f40..740734a 100644
 --- a/dlls/win32u/winstation.c
 +++ b/dlls/win32u/winstation.c
 @@ -825,6 +825,10 @@ HWND get_desktop_window(void)
@@ -13,7 +13,7 @@ index eaa5f40..f704b0e 100644
  
          SERVER_START_REQ( set_user_object_info )
          {
-@@ -842,47 +846,17 @@ HWND get_desktop_window(void)
+@@ -842,47 +846,19 @@ HWND get_desktop_window(void)
          }
          SERVER_END_REQ;
  
@@ -54,7 +54,9 @@ index eaa5f40..f704b0e 100644
 -            NtClose( process );
 -        }
 -        else ERR_(win)( "failed to start explorer %x\n", status );
-+        wcscpy( mut_buffer, L"\\BaseNamedObjects\\__wine_explorer_desktop_mutex_" );
++        static const WCHAR mut_prefixW[] = {'\\','B','a','s','e','N','a','m','e','d','O','b','j','e','c','t','s','\\','_','_','w','i','n','e','_','e','x','p','l','o','r','e','r','_','d','e','s','k','t','o','p','_','m','u','t','e','x','_',0};
++
++        wcscpy( mut_buffer, mut_prefixW );
 +        wcscat( mut_buffer, desktop );
 +        RtlInitUnicodeString( &mut_name, mut_buffer );
 +        InitializeObjectAttributes( &mut_attr, &mut_name, OBJ_OPENIF, NULL, NULL );
@@ -69,7 +71,7 @@ index eaa5f40..f704b0e 100644
              if (!wine_server_call( req ))
              {
                  thread_info->top_window = reply->top_window;
-@@ -890,6 +864,64 @@ HWND get_desktop_window(void)
+@@ -890,6 +866,64 @@ HWND get_desktop_window(void)
              }
          }
          SERVER_END_REQ;
