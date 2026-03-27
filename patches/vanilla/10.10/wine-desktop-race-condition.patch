@@ -1,6 +1,6 @@
 --- a/dlls/win32u/winstation.c
 +++ b/dlls/win32u/winstation.c
-@@ -795,6 +795,21 @@ HWND get_desktop_window(void)
+@@ -795,6 +795,38 @@ HWND get_desktop_window(void)
  
      if (thread_info->top_window) return UlongToHandle( thread_info->top_window );
  
@@ -15,7 +15,24 @@
 +        static const WCHAR desktopW[] = {'/','d','e','s','k','t','o','p',0};
 +        const WCHAR *cmdline = NtCurrentTeb()->Peb->ProcessParameters->CommandLine.Buffer;
 +        const WCHAR *imagepath = NtCurrentTeb()->Peb->ProcessParameters->ImagePathName.Buffer;
-+        if (imagepath && cmdline && wcsstr(imagepath, explorerW) && wcsstr(cmdline, desktopW))
++        const WCHAR *p;
++        BOOL is_explorer = FALSE, has_desktop = FALSE;
++
++        if (imagepath)
++        {
++            p = wcsrchr(imagepath, '\\');
++            if (!p) p = wcsrchr(imagepath, '/');
++            if (p) p++; else p = imagepath;
++            is_explorer = !wcsicmp(p, explorerW);
++        }
++        if (cmdline)
++        {
++            /* scan for /desktop anywhere in command line */
++            for (p = cmdline; *p; p++)
++                if (*p == '/' && !wcsnicmp(p, desktopW, 8) && (p[8] == 0 || p[8] == '=' || p[8] == ',' || p[8] == ' '))
++                { has_desktop = TRUE; break; }
++        }
++        if (is_explorer && has_desktop)
 +            return 0;
 +    }
 +
